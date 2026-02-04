@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLM Manager V6</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f5; padding: 20px; color: #333; margin: 0; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* MACHINE SELECTION PAGE */
+        .machine-select-page { text-align: center; padding: 40px 20px; }
+        .machine-select-page h1 { margin-bottom: 10px; }
+        .machine-select-page p { color: #666; margin-bottom: 30px; }
+        
+        .machines-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px;
+        }
+        
+        .machine-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        .machine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #007bff;
+        }
+        .machine-card h3 { margin: 0 0 10px 0; font-size: 1.4em; }
+        .machine-card .description { color: #666; font-size: 0.9em; margin-bottom: 15px; min-height: 20px; }
+        .machine-card .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+        .machine-card .stat { 
+            padding: 5px 12px; 
+            border-radius: 20px; 
+            font-size: 0.8em; 
+            font-weight: 600;
+        }
+        .machine-card .stat.total { background: #e3f2fd; color: #1976d2; }
+        .machine-card .stat.ok { background: #e8f5e9; color: #388e3c; }
+        .machine-card .stat.warning { background: #fff3e0; color: #f57c00; }
+        .machine-card .stat.critical { background: #ffebee; color: #d32f2f; }
+        .machine-card .stat.overtime { background: #212121; color: white; }
+        
+        .machine-card .edit-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .machine-card .edit-btn:hover { opacity: 1; }
+        
+        .add-machine-card {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .add-machine-card:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        .add-machine-card .icon { font-size: 3em; color: #adb5bd; margin-bottom: 10px; }
+        .add-machine-card span { color: #6c757d; font-weight: 600; }
+
+        /* GLOBAL STATS BAR */
+        .global-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .global-stat {
+            text-align: center;
+        }
+        .global-stat .value { font-size: 2em; font-weight: bold; color: #007bff; }
+        .global-stat .label { font-size: 0.85em; color: #666; }
+
+        /* TABS */
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; background: #e9ecef; border: none; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .tab:hover { background: #dee2e6; }
+        .tab.active { background: #007bff; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* DASHBOARD CARDS */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-card.critical { background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); }
+        .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stat-card.success { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .stat-card.info { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .stat-card h3 { margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; }
+        .stat-card .value { font-size: 2.5em; font-weight: bold; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+        th { background-color: #007bff; color: white; font-weight: 600; text-transform: uppercase; font-size: 0.85em; cursor: pointer; user-select: none; }
+        th:hover { background-color: #0056b3; }
+        th span.sort-arrow { margin-left: 5px; font-size: 0.8em; }
+        tr:hover { background-color: #f8f9fa; }
+
+        .progress-bar { width: 100%; background: #e9ecef; border-radius: 4px; height: 10px; margin-top: 5px; overflow: hidden; }
+        .progress-bar div { height: 100%; transition: width 0.3s; }
+        
+        /* BOTTONI */
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: 0.2s; margin-right: 5px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-light { background: #fff; border: 1px solid #ddd; color: #555; font-weight: bold; font-size: 1.1em; padding: 0px 8px; line-height: 24px; }
+        .btn-back { background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* HEADER CON MACCHINA */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .page-header .machine-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .page-header .machine-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .page-header .machine-name span {
+            color: #007bff;
+        }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+        /* DROPDOWN MENU */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; right: 0; background-color: white; min-width: 140px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 99; border-radius: 4px; border: 1px solid #eee; }
+        .dropdown-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.9em; }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .show { display: block; }
+
+        /* MODALS */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+        .modal-content { background: white; margin: 3% auto; padding: 25px; width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); position: relative; }
+        .modal-content.wide { max-width: 1000px; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; font-weight: bold; color: #aaa; cursor: pointer; }
+        .close-btn:hover { color: #333; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+
+        /* CHARTS & LEGEND */
+        .chart-container { display: flex; align-items: flex-end; height: 200px; gap: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 20px; }
+        .bar { flex: 1; background: #007bff; transition: height 0.5s; position: relative; border-radius: 3px 3px 0 0; min-width: 20px; }
+        .bar:hover { opacity: 0.8; }
+        .bar-label { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 10px; width: 100%; text-align: center; overflow: hidden; }
+        .bar-val { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: bold; }
+        .bar.broken { background: #dc3545; }
+        .bar.ok { background: #28a745; }
+        .bar.early { background: #ffc107; }
+        
+        .legend { display: flex; gap: 15px; font-size: 0.85em; margin-top: 30px; justify-content: center; }
+        .dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+        .edit-link { color: #007bff; text-decoration: none; cursor: pointer; margin-left: 5px; }
+
+        /* OVERTIME STYLING */
+        .overtime-warning { 
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+            color: white; 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* TOAST NOTIFICATIONS */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { 
+            padding: 12px 20px; 
+            margin-bottom: 10px; 
+            border-radius: 6px; 
+            color: white; 
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
+        .toast.warning { background: #ffc107; color: #333; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* STATS BOXES */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; }
+        .stats-box { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #007bff; }
+        .stats-box.danger { border-left-color: #dc3545; }
+        .stats-box.success { border-left-color: #28a745; }
+        .stats-box.warning { border-left-color: #ffc107; }
+        .stats-box h4 { margin: 0 0 5px 0; font-size: 0.85em; color: #666; }
+        .stats-box .val { font-size: 1.5em; font-weight: bold; }
+
+        /* PREDICTION BOX */
+        .prediction-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin: 15px 0; }
+        .prediction-box h4 { margin: 0 0 15px 0; }
+        .prediction-box .pred-date { font-size: 2em; font-weight: bold; }
+        .prediction-box .confidence { display: inline-block; padding: 3px 10px; background: rgba(255,255,255,0.2); border-radius: 20px; font-size: 0.8em; margin-top: 10px; }
+
+        /* COMPARISON TABLE */
+        .comparison-table th { background: #6c757d; }
+        .comparison-table .best { background: #d4edda !important; }
+        .comparison-table .worst { background: #f8d7da !important; }
+
+        /* MATERIAL BARS */
+        .material-bar { display: flex; align-items: center; margin: 10px 0; }
+        .material-bar .label { width: 200px; font-size: 0.9em; }
+        .material-bar .bar-bg { flex: 1; background: #e9ecef; height: 25px; border-radius: 4px; overflow: hidden; position: relative; }
+        .material-bar .bar-fill { height: 100%; background: linear-gradient(90deg, #007bff, #00d4ff); transition: width 0.5s; }
+        .material-bar .bar-value { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-weight: bold; font-size: 0.85em; }
+
+        /* PAGES */
+        .page { display: none; }
+        .page.active { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    
+    <!-- PAGE: SELEZIONE MACCHINA -->
+    <div id="page-machines" class="page active">
+        <div class="machine-select-page">
+            <h1>🏭 TLM Manager</h1>
+            <p>Seleziona la macchina su cui stai lavorando</p>
+            
+            <div class="global-stats" id="globalStats"></div>
+            
+            <div class="machines-grid" id="machinesGrid">
+                <!-- Caricamento iniziale -->
+                <div class="machine-card add-machine-card" onclick="openNewMachineModal()">
+                    <div class="icon">+</div>
+                    <span>Aggiungi Macchina</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PAGE: GESTIONE UTENSILI MACCHINA -->
+    <div id="page-tools" class="page">
+        <div class="page-header">
+            <div class="machine-info">
+                <button class="btn btn-back" onclick="goBackToMachines()">← Indietro</button>
+                <span class="machine-name">🏭 <span id="currentMachineName"></span></span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="exportCSV('tools')">📥 Export Utensili</button>
+                <button class="btn btn-secondary" onclick="exportCSV('cycles')">📥 Export Storico</button>
+                <button class="btn btn-primary" onclick="openMaterialsModal()">⚙️ Materiali</button>
+                <button class="btn btn-success" onclick="openAddToolModal()">+ Utensile</button>
+                <input type="text" id="searchInput" placeholder="Cerca..." onkeyup="filterTable()" style="padding: 6px; border:1px solid #ccc; border-radius:4px;">
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('tools')">🔧 Utensili</button>
+            <button class="tab" onclick="switchTab('dashboard')">📊 Dashboard</button>
+        </div>
+
+        <!-- TAB: UTENSILI -->
+        <div id="tab-tools" class="tab-content active">
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:70px" onclick="sortBy('position')">Pos <span id="sort_position" class="sort-arrow"></span></th>
+                            <th onclick="sortBy('alias')">Alias <span id="sort_alias" class="sort-arrow"></span></th>
+                            <th style="width:60px" onclick="sortBy('duplo')">Dup <span id="sort_duplo" class="sort-arrow"></span></th>
+                            <th onclick="sortBy('life')">Stato (Worst Case) <span id="sort_life" class="sort-arrow"></span></th>
+                            <th style="width:380px">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="toolsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="dashboard-grid" id="dashboardCards"></div>
+            
+            <div class="card">
+                <h3>⚠️ Utensili Critici (< 20%)</h3>
+                <div id="criticalToolsList"></div>
+            </div>
+            
+            <div class="card">
+                <h3>🔴 Utensili Più Problematici (Ultimo Mese)</h3>
+                <div id="problematicList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Nuova Macchina -->
+<div id="newMachineModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('newMachineModal')">&times;</span>
+        <h3 id="machineModalTitle">Nuova Macchina</h3>
+        <input type="hidden" id="editMachineId">
+        <div class="form-group">
+            <label>Nome Macchina:</label>
+            <input type="text" id="machineName" placeholder="es. DMG DMU 50, Mazak QTN 200..." required>
+        </div>
+        <div class="form-group">
+            <label>Descrizione (opzionale):</label>
+            <textarea id="machineDescription" rows="2" placeholder="es. Reparto fresatura, Turno 1..."></textarea>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-danger" id="deleteMachineBtn" onclick="deleteMachine()" style="display:none; float:left;">🗑️ Elimina</button>
+            <button class="btn btn-success" onclick="submitMachine()">Salva</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Modifica Utensile -->
+<div id="editToolModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('editToolModal')">&times;</span>
+        <h3>Modifica Dati Utensile</h3>
+        <input type="hidden" id="editToolId">
+        <div class="form-group"><label>Alias:</label><input type="text" id="editAlias" required></div>
+        <div class="form-group"><label>Duplo:</label><input type="number" id="editDuplo" min="1" value="1"></div>
+        <div class="form-group"><label>Posizione:</label><input type="number" id="editPos" min="1"></div>
+        <div style="text-align:right;">
+            <button class="btn btn-success" onclick="submitToolEdit()">Salva Modifiche</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Target -->
+<div id="targetModal" class="modal">
+    <div class="modal-content" style="max-width: 300px;">
+        <span class="close-btn" onclick="closeModal('targetModal')">&times;</span>
+        <h3>Modifica Target</h3>
+        <input type="hidden" id="targetToolId">
+        <div class="form-group">
+            <label>Nuovo Target (min):</label>
+            <input type="number" id="targetValue" min="1" required>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-success" onclick="submitTargetUpdate()">Salva</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Stats Avanzate -->
+<div id="statsModal" class="modal">
+    <div class="modal-content wide">
+        <span class="close-btn" onclick="closeModal('statsModal')">&times;</span>
+        <h3 id="statsTitle">Analisi Storica</h3>
+        
+        <div class="tabs" style="margin-bottom:15px;">
+            <button class="tab active" onclick="switchStatsTab('overview')" id="statsTab-overview">📈 Overview</button>
+            <button class="tab" onclick="switchStatsTab('materials')" id="statsTab-materials">🧱 Per Materiale</button>
+            <button class="tab" onclick="switchStatsTab('duplos')" id="statsTab-duplos">🔄 Confronto Dupli</button>
+        </div>
+        
+        <div id="statsContent-overview" class="stats-tab-content"></div>
+        <div id="statsContent-materials" class="stats-tab-content" style="display:none;"></div>
+        <div id="statsContent-duplos" class="stats-tab-content" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- MODAL: Sessioni Correnti -->
+<div id="sessionsModal" class="modal">
+    <div class="modal-content wide">
+        <span class="close-btn" onclick="closeModal('sessionsModal')">&times;</span>
+        <h3 id="sessionsTitle">Storico Sessioni Ciclo Corrente</h3>
+        <div id="sessionsContent"></div>
+    </div>
+</div>
+
+<!-- MODAL: Previsione -->
+<div id="predictionModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('predictionModal')">&times;</span>
+        <h3 id="predictionTitle">🔮 Previsione Sostituzione</h3>
+        <div id="predictionContent"></div>
+    </div>
+</div>
+
+<!-- MODAL: Reset -->
+<div id="resetModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close-btn" onclick="closeModal('resetModal')">&times;</span>
+        <h3>Sostituzione Utensile</h3>
+        <p>Stai rimuovendo l'utensile. Come si è comportato?</p>
+        <input type="hidden" id="resetToolId">
+        <div class="form-group">
+            <label>Stato Finale:</label>
+            <select id="resetStatus">
+                <option value="OK">✅ OK - Usura Normale</option>
+                <option value="BROKEN">❌ ROTTO - Rotto in macchina</option>
+                <option value="EARLY">⚠️ ANTICIPATO - Sostituito per sicurezza</option>
+            </select>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-success" onclick="confirmReset()">Archivia e Resetta</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Sessione Lavoro -->
+<div id="sessionModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('sessionModal')">&times;</span>
+        <h3>Aggiungi Lavoro</h3>
+        <input type="hidden" id="sessionToolId">
+        <div class="form-group">
+            <label>Minuti:</label>
+            <input type="number" id="sessionMinutes" min="0.1" step="0.1" required>
+        </div>
+        <div class="form-group">
+            <label>Materiale:</label>
+            <select id="sessionMaterial"></select>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-primary" onclick="submitSession()">Conferma</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Estensione -->
+<div id="extendModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('extendModal')">&times;</span>
+        <h3>Estendi Vita</h3>
+        <input type="hidden" id="extendToolId">
+        <div class="form-group">
+            <label>Minuti Extra:</label>
+            <input type="number" id="extendMinutes" min="0.1" step="0.1" required>
+        </div>
+        <div class="form-group">
+            <label>Materiale:</label>
+            <select id="extendMaterial"></select>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-warning" onclick="submitExtension()">Estendi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Nuovo Utensile -->
+<div id="newToolModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('newToolModal')">&times;</span>
+        <h3>Nuovo Utensile</h3>
+        <div class="form-group"><label>Alias:</label><input type="text" id="newAlias" required></div>
+        <div class="form-group"><label>Duplo:</label><input type="number" id="newDuplo" value="1" min="1"></div>
+        <div class="form-group"><label>Posizione:</label><input type="number" id="newPos" min="1"></div>
+        <div class="form-group"><label>Target:</label><input type="number" id="newTarget" value="100" min="1"></div>
+        <div style="text-align:right;">
+            <button class="btn btn-success" onclick="submitNewTool()">Crea</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Materiali -->
+<div id="materialsModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeModal('materialsModal')">&times;</span>
+        <h3>⚙️ Materiali - <span id="matMachineName"></span></h3>
+        <p style="font-size:0.85em; color:#666; margin-bottom:15px;">
+            Configura i materiali e i fattori di usura specifici per questa macchina.<br>
+            Il materiale con fattore <b>1.0</b> è il riferimento (worst case).
+        </p>
+        <ul id="matList" style="padding-left:20px; margin-bottom:15px; list-style:none;"></ul>
+        <hr style="margin: 15px 0;">
+        <h4>Aggiungi Nuovo Materiale</h4>
+        <div style="display:flex; gap:5px; align-items:flex-end;">
+            <div style="flex:2;">
+                <label style="font-size:0.8em;">Nome:</label>
+                <input type="text" id="newMatName" placeholder="es. Acciaio C45">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:0.8em;">Fattore:</label>
+                <input type="number" id="newMatFactor" placeholder="0.5" step="0.1" min="0.01">
+            </div>
+            <button class="btn btn-success" onclick="addMaterial()">+ Aggiungi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Modifica Materiale -->
+<div id="editMaterialModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close-btn" onclick="closeModal('editMaterialModal')">&times;</span>
+        <h3>Modifica Materiale</h3>
+        <input type="hidden" id="editMatId">
+        <div class="form-group">
+            <label>Nome Materiale:</label>
+            <input type="text" id="editMatName" required>
+        </div>
+        <div class="form-group">
+            <label>Fattore Usura:</label>
+            <input type="number" id="editMatFactor" step="0.1" min="0.01" required>
+            <small style="color:#666;">1.0 = worst case, valori minori = materiali più morbidi</small>
+        </div>
+        <div style="text-align:right;">
+            <button class="btn btn-success" onclick="updateMaterial()">Salva</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === STATE ===
+    let currentMachineId = null;
+    let currentMachineName = '';
+    let machinesData = [];
+    let materialsData = []; 
+    let toolsData = [];
+    let dashboardData = null;
+    let currentSortColumn = 'position'; 
+    let currentSortDir = 'asc';
+    let currentStatsAlias = '';
+
+    // --- TOAST ---
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // --- API HELPER ---
+    async function apiCall(url, options = {}) {
+        try {
+            const res = await fetch(url, options);
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.error || 'Errore sconosciuto', 'error');
+                return null;
+            }
+            return data;
+        } catch (e) {
+            showToast('Errore di connessione', 'error');
+            return null;
+        }
+    }
+
+    // --- PAGE NAVIGATION ---
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(`page-${pageId}`).classList.add('active');
+    }
+
+    function goBackToMachines() {
+        currentMachineId = null;
+        showPage('machines');
+        loadMachines();
+    }
+
+    function selectMachine(id, name) {
+        currentMachineId = id;
+        currentMachineName = name;
+        document.getElementById('currentMachineName').textContent = name;
+        showPage('tools');
+        loadMachineData(true);
+    }
+
+    // --- CHECK IF MODAL/DROPDOWN OPEN ---
+    function isAnyModalOpen() {
+        const modals = document.querySelectorAll('.modal');
+        for (let m of modals) {
+            if (m.style.display === 'block') return true;
+        }
+        return false;
+    }
+
+    function isAnyDropdownOpen() {
+        const dropdowns = document.querySelectorAll('.dropdown-content.show');
+        return dropdowns.length > 0;
+    }
+
+    // === MACHINES PAGE ===
+    async function loadMachines() {
+        try {
+            const [machinesRes, globalRes] = await Promise.all([
+                fetch('/api/machines'),
+                fetch('/api/dashboard/global')
+            ]);
+            
+            if (machinesRes.ok) {
+                machinesData = await machinesRes.json();
+            } else {
+                machinesData = [];
+            }
+            
+            // Global stats
+            if (globalRes.ok) {
+                const g = await globalRes.json();
+                document.getElementById('globalStats').innerHTML = `
+                    <div class="global-stat"><div class="value">${g.total_machines}</div><div class="label">Macchine</div></div>
+                    <div class="global-stat"><div class="value">${g.total_tools}</div><div class="label">Utensili Totali</div></div>
+                    <div class="global-stat"><div class="value" style="color:#dc3545;">${g.total_critical + g.total_overtime}</div><div class="label">Critici/Overtime</div></div>
+                    <div class="global-stat"><div class="value" style="color:#dc3545;">${g.monthly_broken}</div><div class="label">Rotture Mese</div></div>
+                `;
+            } else {
+                document.getElementById('globalStats').innerHTML = '';
+            }
+        } catch (e) {
+            console.error('Errore caricamento macchine:', e);
+            machinesData = [];
+            document.getElementById('globalStats').innerHTML = '';
+        }
+        
+        renderMachinesGrid();
+    }
+
+    function renderMachinesGrid() {
+        const grid = document.getElementById('machinesGrid');
+        
+        let html = '';
+        
+        // Se non ci sono macchine, mostra messaggio di benvenuto
+        if (machinesData.length === 0) {
+            html += `
+                <div class="machine-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: default;">
+                    <h3>👋 Benvenuto in TLM Manager!</h3>
+                    <div class="description" style="color: rgba(255,255,255,0.9);">
+                        Per iniziare, crea la tua prima macchina CNC cliccando sul pulsante a fianco.
+                    </div>
+                </div>
+            `;
+        }
+        
+        machinesData.forEach(m => {
+            const s = m.stats;
+            const hasAlerts = s.critical > 0 || s.overtime > 0;
+            
+            html += `
+                <div class="machine-card" onclick="selectMachine(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
+                    <button class="edit-btn" onclick="event.stopPropagation(); openEditMachineModal(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${(m.description || '').replace(/'/g, "\\'")}')">⚙️</button>
+                    <h3>${m.name}</h3>
+                    <div class="description">${m.description || ''}</div>
+                    <div class="stats">
+                        <span class="stat total">${s.total_tools} utensili</span>
+                        ${s.ok > 0 ? `<span class="stat ok">${s.ok} OK</span>` : ''}
+                        ${s.warning > 0 ? `<span class="stat warning">${s.warning} ⚠️</span>` : ''}
+                        ${s.critical > 0 ? `<span class="stat critical">${s.critical} 🔴</span>` : ''}
+                        ${s.overtime > 0 ? `<span class="stat overtime">${s.overtime} OVER</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Add machine card - sempre visibile
+        html += `
+            <div class="machine-card add-machine-card" onclick="openNewMachineModal()">
+                <div class="icon">+</div>
+                <span>Aggiungi Macchina</span>
+            </div>
+        `;
+        
+        grid.innerHTML = html;
+    }
+
+    // --- MACHINE MODAL ---
+    function openNewMachineModal() {
+        document.getElementById('machineModalTitle').textContent = 'Nuova Macchina';
+        document.getElementById('editMachineId').value = '';
+        document.getElementById('machineName').value = '';
+        document.getElementById('machineDescription').value = '';
+        document.getElementById('deleteMachineBtn').style.display = 'none';
+        document.getElementById('newMachineModal').style.display = 'block';
+    }
+
+    function openEditMachineModal(id, name, description) {
+        document.getElementById('machineModalTitle').textContent = 'Modifica Macchina';
+        document.getElementById('editMachineId').value = id;
+        document.getElementById('machineName').value = name;
+        document.getElementById('machineDescription').value = description;
+        document.getElementById('deleteMachineBtn').style.display = 'inline-block';
+        document.getElementById('newMachineModal').style.display = 'block';
+    }
+
+    async function submitMachine() {
+        const id = document.getElementById('editMachineId').value;
+        const name = document.getElementById('machineName').value.trim();
+        const description = document.getElementById('machineDescription').value.trim();
+        
+        if (!name) { showToast('Nome macchina obbligatorio', 'error'); return; }
+        
+        let result;
+        if (id) {
+            result = await apiCall(`/api/machines/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, description })
+            });
+        } else {
+            result = await apiCall('/api/machines', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, description })
+            });
+        }
+        
+        if (result) {
+            showToast(id ? 'Macchina modificata' : 'Macchina creata');
+            closeModal('newMachineModal');
+            loadMachines();
+        }
+    }
+
+    async function deleteMachine() {
+        const id = document.getElementById('editMachineId').value;
+        if (!id) return;
+        
+        if (confirm('⚠️ ATTENZIONE: Eliminando questa macchina verranno eliminati TUTTI i suoi utensili e lo storico!\n\nSei sicuro?')) {
+            const result = await apiCall(`/api/machines/${id}`, { method: 'DELETE' });
+            if (result) {
+                showToast(`Macchina eliminata (${result.deleted_tools} utensili rimossi)`);
+                closeModal('newMachineModal');
+                loadMachines();
+            }
+        }
+    }
+
+    // === TOOLS PAGE ===
+    async function loadMachineData(forceUpdate = false) {
+        if (!currentMachineId) return;
+        
+        const [toolsRes, matsRes, dashRes] = await Promise.all([
+            fetch(`/api/machines/${currentMachineId}/tools`), 
+            fetch(`/api/machines/${currentMachineId}/materials`),
+            fetch(`/api/machines/${currentMachineId}/dashboard`)
+        ]);
+        
+        if (toolsRes.ok) toolsData = await toolsRes.json();
+        if (matsRes.ok) materialsData = await matsRes.json();
+        if (dashRes.ok) dashboardData = await dashRes.json();
+        
+        if (!forceUpdate && (isAnyModalOpen() || isAnyDropdownOpen())) {
+            return;
+        }
+        
+        applySort(); 
+        filterTable();
+        updateMatSelects();
+        renderDashboard();
+    }
+
+    // --- TABS ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    function switchStatsTab(tabName) {
+        document.querySelectorAll('[id^="statsTab-"]').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('[id^="statsContent-"]').forEach(c => c.style.display = 'none');
+        document.getElementById(`statsTab-${tabName}`).classList.add('active');
+        document.getElementById(`statsContent-${tabName}`).style.display = 'block';
+    }
+
+    // --- DASHBOARD ---
+    function renderDashboard() {
+        if (!dashboardData) return;
+        
+        const d = dashboardData;
+        
+        document.getElementById('dashboardCards').innerHTML = `
+            <div class="stat-card info"><h3>TOTALE UTENSILI</h3><div class="value">${d.total_tools}</div></div>
+            <div class="stat-card success"><h3>OK (>50%)</h3><div class="value">${d.status_summary.ok}</div></div>
+            <div class="stat-card warning"><h3>ATTENZIONE (20-50%)</h3><div class="value">${d.status_summary.warning}</div></div>
+            <div class="stat-card critical"><h3>CRITICI (<20%)</h3><div class="value">${d.status_summary.critical}</div></div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #232526 0%, #414345 100%);"><h3>OVERTIME</h3><div class="value">${d.status_summary.overtime}</div></div>
+            <div class="stat-card"><h3>CICLI MESE</h3><div class="value">${d.monthly_total}</div></div>
+            <div class="stat-card critical"><h3>ROTTURE MESE</h3><div class="value">${d.monthly_cycles.BROKEN}</div></div>
+        `;
+        
+        const criticals = d.tools_by_status.filter(t => t.percent < 20 && !t.is_overtime);
+        const overtimes = d.tools_by_status.filter(t => t.is_overtime);
+        
+        let criticalHtml = '';
+        if (overtimes.length > 0) {
+            criticalHtml += '<h4 style="color:#dc3545;">🔴 OVERTIME</h4><ul>';
+            overtimes.forEach(t => {
+                criticalHtml += `<li><b>${t.alias}</b> D${t.duplo} (Pos: ${t.position || 'MAG'}) - <span class="overtime-warning">OVERTIME ${t.remaining} min</span></li>`;
+            });
+            criticalHtml += '</ul>';
+        }
+        if (criticals.length > 0) {
+            criticalHtml += '<h4 style="color:#ffc107;">⚠️ Critici</h4><ul>';
+            criticals.forEach(t => {
+                criticalHtml += `<li><b>${t.alias}</b> D${t.duplo} (Pos: ${t.position || 'MAG'}) - ${t.percent}% rimanente</li>`;
+            });
+            criticalHtml += '</ul>';
+        }
+        if (!criticalHtml) criticalHtml = '<p style="color:#28a745;">✅ Nessun utensile critico!</p>';
+        document.getElementById('criticalToolsList').innerHTML = criticalHtml;
+        
+        let probHtml = '';
+        if (d.problematic_tools.length > 0) {
+            probHtml = '<ul>';
+            d.problematic_tools.forEach(p => {
+                probHtml += `<li><b>${p.alias}</b> - ${p.broken_count} rotture</li>`;
+            });
+            probHtml += '</ul>';
+        } else {
+            probHtml = '<p style="color:#28a745;">✅ Nessuna rottura nell\'ultimo mese!</p>';
+        }
+        document.getElementById('problematicList').innerHTML = probHtml;
+    }
+
+    // --- SORTING & FILTERING ---
+    function sortBy(column) {
+        if (currentSortColumn === column) currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+        else { currentSortColumn = column; currentSortDir = 'asc'; }
+        applySort(); 
+        filterTable();
+    }
+
+    function applySort() {
+        toolsData.sort((a, b) => {
+            let valA, valB;
+            if (currentSortColumn === 'position') { 
+                valA = a.position === null ? 99999 : a.position; 
+                valB = b.position === null ? 99999 : b.position; 
+            }
+            else if (currentSortColumn === 'alias') { valA = a.alias.toLowerCase(); valB = b.alias.toLowerCase(); }
+            else if (currentSortColumn === 'duplo') { valA = a.duplo; valB = b.duplo; }
+            else if (currentSortColumn === 'life') { valA = a.status_data.percent; valB = b.status_data.percent; }
+            if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        ['position', 'alias', 'duplo', 'life'].forEach(id => document.getElementById('sort_' + id).innerText = '');
+        document.getElementById('sort_' + currentSortColumn).innerText = currentSortDir === 'asc' ? '▲' : '▼';
+    }
+
+    function filterTable() {
+        const txt = document.getElementById('searchInput').value.toLowerCase();
+        let filtered = toolsData;
+        if (txt) filtered = toolsData.filter(t => t.alias.toLowerCase().includes(txt));
+        renderTable(filtered);
+    }
+
+    function renderTable(tools) {
+        const tbody = document.getElementById('toolsTable');
+        tbody.innerHTML = '';
+        tools.forEach(tool => {
+            const st = tool.status_data;
+            const isOvertime = st.is_overtime;
+            
+            let color, displayPercent;
+            if (isOvertime) { color = '#dc3545'; displayPercent = 0; } 
+            else {
+                displayPercent = st.percent;
+                color = st.percent < 20 ? '#dc3545' : st.percent < 50 ? '#ffc107' : '#28a745';
+            }
+            
+            let capText = `${st.base_target}`;
+            if(st.extensions_norm > 0) capText += ` <span style="color:#007bff; font-weight:bold;">+${st.extensions_norm}</span>`;
+
+            let remainingText = isOvertime 
+                ? `<span class="overtime-warning">⚠️ -${Math.abs(st.remaining_norm)}</span>`
+                : `Res: <b>${st.remaining_norm}</b>`;
+
+            const escapedAlias = tool.alias.replace(/'/g, "\\'");
+            
+            tbody.innerHTML += `<tr>
+                <td><b>${tool.position || 'Mag'}</b></td>
+                <td>${tool.alias}</td>
+                <td>${tool.duplo}</td>
+                <td>
+                    <div style="display:flex; justify-content:space-between; font-size:0.9em;">
+                        <span>${remainingText}</span>
+                        <span>Cap: ${capText} <span class="edit-link" onclick="openTargetModal(${tool.id}, ${st.base_target})">✏️</span></span>
+                    </div>
+                    <div class="progress-bar"><div style="width:${displayPercent}%; background:${color};"></div></div>
+                </td>
+                <td style="display:flex; align-items:center; flex-wrap:wrap; gap:3px;">
+                    <button class="btn btn-primary" onclick="openSessionModal(${tool.id})">Lavoro</button>
+                    <button class="btn btn-warning" onclick="openExtendModal(${tool.id})">+Ext</button>
+                    <button class="btn btn-info" onclick="openStats('${escapedAlias}')">Stats</button>
+                    <button class="btn btn-danger" onclick="openResetModal(${tool.id})">Reset</button>
+                    <div class="dropdown">
+                        <button class="btn btn-light" onclick="toggleDropdown(${tool.id})">⋮</button>
+                        <div id="dropdown-${tool.id}" class="dropdown-content">
+                            <button onclick="openSessionsModal(${tool.id}, '${escapedAlias}')">📋 Sessioni</button>
+                            <button onclick="openPrediction(${tool.id}, '${escapedAlias}')">🔮 Previsione</button>
+                            <button onclick="openEditToolModal(${tool.id}, '${escapedAlias}', ${tool.duplo}, ${tool.position || 'null'})">✏️ Modifica</button>
+                            <button onclick="deleteTool(${tool.id})" style="color:red;">🗑️ Elimina</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function updateMatSelects() {
+        const opts = materialsData.map(m => `<option value="${m.factor}" data-name="${m.name}">${m.name} (x${m.factor})</option>`).join('');
+        const s1 = document.getElementById('sessionMaterial');
+        const s2 = document.getElementById('extendMaterial');
+        if(s1) s1.innerHTML = opts;
+        if(s2) s2.innerHTML = opts;
+        
+        // Lista materiali nel modal con possibilità di modifica
+        const list = materialsData.map(m => `
+            <li style="margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                <span><b>${m.name}</b> (fattore: ${m.factor})</span>
+                <span>
+                    <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.8em;" onclick="editMaterial(${m.id}, '${m.name.replace(/'/g, "\\'")}', ${m.factor})">✏️</button>
+                    <button class="btn btn-danger" style="padding:2px 8px; font-size:0.8em;" onclick="delMat(${m.id})">🗑️</button>
+                </span>
+            </li>
+        `).join('');
+        document.getElementById('matList').innerHTML = list || '<li><i>Nessun materiale configurato</i></li>';
+    }
+
+    // --- DROPDOWN ---
+    function toggleDropdown(id) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        for (var i = 0; i < dropdowns.length; i++) {
+            if (dropdowns[i].id !== `dropdown-${id}`) dropdowns[i].classList.remove('show');
+        }
+        document.getElementById(`dropdown-${id}`).classList.toggle("show");
+    }
+    
+    window.onclick = function(event) {
+        if (!event.target.matches('.btn-light')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show');
+            }
+        }
+    }
+
+    // --- EXPORT CSV ---
+    function exportCSV(type) {
+        window.location.href = `/api/machines/${currentMachineId}/export/${type}`;
+        showToast('Download avviato...');
+    }
+
+    // --- STATS ---
+    async function openStats(alias) {
+        currentStatsAlias = alias;
+        document.getElementById('statsModal').style.display = 'block'; 
+        document.getElementById('statsTitle').innerText = `Analisi: ${alias}`;
+        switchStatsTab('overview');
+        await Promise.all([loadStatsOverview(alias), loadStatsMaterials(alias), loadStatsDuplos(alias)]);
+    }
+
+    async function loadStatsOverview(alias) {
+        const content = document.getElementById('statsContent-overview'); 
+        content.innerHTML = "Caricamento...";
+        
+        const res = await fetch(`/api/machines/${currentMachineId}/analytics/${encodeURIComponent(alias)}`); 
+        const data = await res.json();
+        
+        if (!data.has_data) { content.innerHTML = "<p>Nessun dato storico.</p>"; return; }
+        
+        const s = data.stats;
+        let html = `
+            <div style="background:#f1f8ff; padding:15px; border-radius:5px; margin-bottom:15px; border-left:4px solid #007bff;">
+                <strong>🤖 AI:</strong> ${s.suggestion}
+            </div>
+            <div class="stats-grid">
+                <div class="stats-box"><h4>Media Vita</h4><div class="val">${s.avg_life}</div></div>
+                <div class="stats-box"><h4>Deviazione Std</h4><div class="val">${s.std_life}</div></div>
+                <div class="stats-box"><h4>Min</h4><div class="val">${s.min_life}</div></div>
+                <div class="stats-box"><h4>Max</h4><div class="val">${s.max_life}</div></div>
+                <div class="stats-box success"><h4>OK</h4><div class="val">${s.ok_count}</div></div>
+                <div class="stats-box danger"><h4>Rotture</h4><div class="val">${s.broken_count}</div></div>
+                <div class="stats-box warning"><h4>Anticipati</h4><div class="val">${s.early_count}</div></div>
+                <div class="stats-box"><h4>Trend</h4><div class="val" style="font-size:1em;">${s.trend}</div></div>
+            </div>
+            <h4>Storico Cicli (ultimi 20)</h4>
+            <div class="chart-container">`;
+        
+        const maxVal = Math.max(...data.history.map(c => c.total_norm_minutes)) * 1.1 || 100;
+        data.history.slice().reverse().forEach(c => { 
+            html += `<div class="bar ${c.end_status.toLowerCase()}" style="height:${(c.total_norm_minutes/maxVal)*100}%;">
+                <span class="bar-val">${Math.floor(c.total_norm_minutes)}</span>
+                <span class="bar-label">D${c.duplo}<br>${new Date(c.end_date).toLocaleDateString('it-IT').slice(0,5)}</span>
+            </div>`; 
+        });
+        
+        html += `</div><div class="legend">
+            <span><span class="dot" style="background:#28a745"></span>OK</span>
+            <span><span class="dot" style="background:#dc3545"></span>ROTTO</span>
+            <span><span class="dot" style="background:#ffc107"></span>ANTICIPATO</span>
+        </div>`;
+        content.innerHTML = html;
+    }
+
+    async function loadStatsMaterials(alias) {
+        const content = document.getElementById('statsContent-materials');
+        content.innerHTML = "Caricamento...";
+        
+        const res = await fetch(`/api/machines/${currentMachineId}/analytics/${encodeURIComponent(alias)}/by_material`);
+        const data = await res.json();
+        
+        if (!data.has_data || data.by_material.length === 0) {
+            content.innerHTML = "<p>Nessun dato per materiale disponibile.</p>";
+            return;
+        }
+        
+        const maxNorm = Math.max(...data.by_material.map(m => m.total_norm_minutes));
+        let html = '<h4>Usura per Materiale (Ciclo Corrente)</h4>';
+        data.by_material.forEach(m => {
+            const pct = (m.total_norm_minutes / maxNorm * 100).toFixed(0);
+            html += `<div class="material-bar">
+                <div class="label">${m.material} (x${m.factor})</div>
+                <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;"></div>
+                    <span class="bar-value">${m.total_norm_minutes} min norm (${m.session_count} sess.)</span>
+                </div>
+            </div>`;
+        });
+        
+        html += `<table style="margin-top:20px;">
+            <thead><tr><th>Materiale</th><th>Fattore</th><th>Min Reali</th><th>Min Norm</th><th>Sessioni</th><th>Media/Sess</th></tr></thead>
+            <tbody>`;
+        data.by_material.forEach(m => {
+            html += `<tr><td>${m.material}</td><td>${m.factor}</td><td>${m.total_real_minutes}</td><td>${m.total_norm_minutes}</td><td>${m.session_count}</td><td>${m.avg_session_minutes}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+    }
+
+    async function loadStatsDuplos(alias) {
+        const content = document.getElementById('statsContent-duplos');
+        content.innerHTML = "Caricamento...";
+        
+        const res = await fetch(`/api/machines/${currentMachineId}/analytics/${encodeURIComponent(alias)}/by_duplo`);
+        const data = await res.json();
+        
+        if (!data.has_data) { content.innerHTML = "<p>Nessun dato storico per confronto dupli.</p>"; return; }
+        
+        const best = data.by_duplo.reduce((a, b) => a.avg_life > b.avg_life ? a : b);
+        const worst = data.by_duplo.reduce((a, b) => a.avg_life < b.avg_life ? a : b);
+        
+        let html = `<div style="background:#e8f5e9; padding:10px; border-radius:5px; margin-bottom:15px;">
+            <strong>📊 Confronto:</strong> ${data.comparison}
+        </div>
+        <table class="comparison-table">
+            <thead><tr><th>Duplo</th><th>Cicli</th><th>Media</th><th>Std</th><th>Min</th><th>Max</th><th>OK</th><th>Rotti</th><th>Antic.</th><th>% Rottura</th></tr></thead>
+            <tbody>`;
+        
+        data.by_duplo.forEach(d => {
+            const isBest = d.duplo === best.duplo && data.by_duplo.length > 1;
+            const isWorst = d.duplo === worst.duplo && data.by_duplo.length > 1 && best.duplo !== worst.duplo;
+            const rowClass = isBest ? 'best' : (isWorst ? 'worst' : '');
+            html += `<tr class="${rowClass}">
+                <td><b>D${d.duplo}</b> ${isBest ? '👑' : ''} ${isWorst ? '⚠️' : ''}</td>
+                <td>${d.total_cycles}</td><td>${d.avg_life}</td><td>${d.std_life}</td>
+                <td>${d.min_life}</td><td>${d.max_life}</td><td>${d.ok}</td>
+                <td>${d.broken}</td><td>${d.early}</td><td>${d.broken_rate_pct}%</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+    }
+
+    // --- SESSIONS ---
+    async function openSessionsModal(id, alias) {
+        document.getElementById('sessionsModal').style.display = 'block';
+        document.getElementById('sessionsTitle').innerText = `Sessioni Ciclo Corrente: ${alias}`;
+        const content = document.getElementById('sessionsContent');
+        content.innerHTML = "Caricamento...";
+        
+        const res = await fetch(`/api/tools/${id}/sessions`);
+        const data = await res.json();
+        
+        if (data.error) { content.innerHTML = `<p style="color:red;">${data.error}</p>`; return; }
+        if (data.sessions.length === 0) { content.innerHTML = "<p>Nessuna sessione registrata.</p>"; return; }
+        
+        let html = `<div class="stats-grid" style="margin-bottom:20px;">
+            <div class="stats-box"><h4>Sessioni Lavoro</h4><div class="val">${data.summary.total_sessions}</div></div>
+            <div class="stats-box warning"><h4>Estensioni</h4><div class="val">${data.summary.total_extensions}</div></div>
+        </div>
+        <table><thead><tr><th>Data/Ora</th><th>Tipo</th><th>Minuti</th><th>Materiale</th><th>Fattore</th><th>Min Norm</th></tr></thead><tbody>`;
+        
+        data.sessions.forEach(s => {
+            const typeIcon = s.action_type === 'WORK' ? '🔧' : '➕';
+            const typeClass = s.action_type === 'EXT' ? 'style="background:#fff3cd;"' : '';
+            html += `<tr ${typeClass}>
+                <td>${new Date(s.created_at).toLocaleString('it-IT')}</td>
+                <td>${typeIcon} ${s.action_type}</td><td>${s.delta_minutes}</td>
+                <td>${s.material_name || '-'}</td><td>${s.material_factor}</td>
+                <td><b>${s.norm_minutes.toFixed(1)}</b></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+    }
+
+    // --- PREDICTION ---
+    async function openPrediction(id, alias) {
+        document.getElementById('predictionModal').style.display = 'block';
+        document.getElementById('predictionTitle').innerText = `🔮 Previsione: ${alias}`;
+        const content = document.getElementById('predictionContent');
+        content.innerHTML = "Calcolo previsione...";
+        
+        const res = await fetch(`/api/tools/${id}/prediction`);
+        const data = await res.json();
+        
+        if (!data.has_prediction) { content.innerHTML = `<p>${data.message}</p>`; return; }
+        
+        const st = data.current_status;
+        const confColor = data.confidence === 'ALTA' ? '#28a745' : data.confidence === 'MEDIA' ? '#ffc107' : '#dc3545';
+        
+        content.innerHTML = `
+            <div class="prediction-box">
+                <h4>📅 Data Prevista Sostituzione</h4>
+                <div class="pred-date">${data.predicted_end_date_formatted}</div>
+                <div class="confidence" style="background:${confColor};">Confidenza: ${data.confidence}</div>
+            </div>
+            <div class="stats-grid">
+                <div class="stats-box"><h4>Rimanente</h4><div class="val">${st.remaining_norm}</div></div>
+                <div class="stats-box"><h4>Usura/Giorno</h4><div class="val">${data.usage_rate_per_day}</div></div>
+                <div class="stats-box"><h4>Giorni Rimasti</h4><div class="val">${data.remaining_days}</div></div>
+            </div>
+            <p style="font-size:0.85em; color:#666; margin-top:15px;">
+                <b>Nota:</b> La previsione è basata sul ritmo di usura attuale.
+            </p>`;
+    }
+
+    // --- TOOL CRUD ---
+    function openEditToolModal(id, alias, duplo, pos) {
+        document.getElementById('editToolId').value = id;
+        document.getElementById('editAlias').value = alias;
+        document.getElementById('editDuplo').value = duplo;
+        document.getElementById('editPos').value = pos === null ? '' : pos;
+        document.getElementById('editToolModal').style.display = 'block';
+    }
+
+    async function submitToolEdit() {
+        const id = document.getElementById('editToolId').value;
+        const alias = document.getElementById('editAlias').value.trim();
+        const duplo = document.getElementById('editDuplo').value;
+        const pos = document.getElementById('editPos').value;
+        
+        if (!alias) { showToast('Alias obbligatorio', 'error'); return; }
+        
+        const result = await apiCall(`/api/tools/${id}`, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ alias, duplo, position: pos || null })
+        });
+        if (result) { showToast('Utensile modificato'); closeModal('editToolModal'); loadMachineData(true); }
+    }
+
+    async function deleteTool(id) {
+        if(confirm("Sei sicuro di voler ELIMINARE questo utensile?")) {
+            const result = await apiCall(`/api/tools/${id}`, { method: 'DELETE' });
+            if (result) { showToast('Utensile eliminato'); loadMachineData(true); }
+        }
+    }
+
+    function openTargetModal(id, val) { 
+        document.getElementById('targetToolId').value = id; 
+        document.getElementById('targetValue').value = val; 
+        document.getElementById('targetModal').style.display = 'block'; 
+    }
+    
+    async function submitTargetUpdate() { 
+        const id = document.getElementById('targetToolId').value; 
+        const val = document.getElementById('targetValue').value;
+        if (!val || parseFloat(val) <= 0) { showToast('Target deve essere > 0', 'error'); return; }
+        
+        const result = await apiCall(`/api/tools/${id}/update_target`, { 
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ target: val }) 
+        });
+        if (result) { showToast('Target aggiornato'); closeModal('targetModal'); loadMachineData(true); }
+    }
+
+    function openResetModal(id) { 
+        document.getElementById('resetToolId').value = id; 
+        document.getElementById('resetModal').style.display = 'block'; 
+    }
+    
+    async function confirmReset() { 
+        const id = document.getElementById('resetToolId').value; 
+        const status = document.getElementById('resetStatus').value; 
+        
+        const result = await apiCall(`/api/tools/${id}/reset`, { 
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status }) 
+        });
+        if (result) { showToast('Utensile resettato'); closeModal('resetModal'); loadMachineData(true); }
+    }
+
+    function openSessionModal(id) { 
+        document.getElementById('sessionToolId').value = id; 
+        document.getElementById('sessionMinutes').value = '';
+        document.getElementById('sessionModal').style.display = 'block'; 
+    }
+    
+    async function submitSession() { 
+        const id = document.getElementById('sessionToolId').value; 
+        const mins = document.getElementById('sessionMinutes').value; 
+        const sel = document.getElementById('sessionMaterial'); 
+        
+        if(!mins || parseFloat(mins) <= 0) { showToast('Minuti deve essere > 0', 'error'); return; }
+        
+        const result = await apiCall(`/api/tools/${id}/session`, { 
+            method: 'POST', headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ minutes: mins, factor: sel.value, mat_name: sel.options[sel.selectedIndex].getAttribute('data-name') }) 
+        });
+        if (result) { showToast('Lavoro registrato'); closeModal('sessionModal'); loadMachineData(true); }
+    }
+
+    function openExtendModal(id) { 
+        document.getElementById('extendToolId').value = id; 
+        document.getElementById('extendMinutes').value = '';
+        document.getElementById('extendModal').style.display = 'block'; 
+    }
+    
+    async function submitExtension() { 
+        const id = document.getElementById('extendToolId').value; 
+        const mins = document.getElementById('extendMinutes').value; 
+        const sel = document.getElementById('extendMaterial'); 
+        
+        if(!mins || parseFloat(mins) <= 0) { showToast('Minuti deve essere > 0', 'error'); return; }
+        
+        const result = await apiCall(`/api/tools/${id}/extend`, { 
+            method: 'POST', headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ minutes: mins, factor: sel.value, mat_name: sel.options[sel.selectedIndex].getAttribute('data-name') }) 
+        });
+        if (result) { showToast('Estensione registrata'); closeModal('extendModal'); loadMachineData(true); }
+    }
+
+    function openAddToolModal() { 
+        document.getElementById('newAlias').value = '';
+        document.getElementById('newDuplo').value = '1';
+        document.getElementById('newPos').value = '';
+        document.getElementById('newTarget').value = '100';
+        document.getElementById('newToolModal').style.display = 'block'; 
+    }
+    
+    async function submitNewTool() { 
+        const alias = document.getElementById('newAlias').value.trim(); 
+        const duplo = document.getElementById('newDuplo').value; 
+        const pos = document.getElementById('newPos').value; 
+        const target = document.getElementById('newTarget').value;
+        
+        if (!alias) { showToast('Alias obbligatorio', 'error'); return; }
+        
+        const result = await apiCall(`/api/machines/${currentMachineId}/tools`, { 
+            method: 'POST', headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({alias, duplo, position: pos || null, target})
+        });
+        if (result) { showToast('Utensile creato'); closeModal('newToolModal'); loadMachineData(true); }
+    }
+
+    // --- MATERIALS ---
+    function openMaterialsModal() { 
+        document.getElementById('matMachineName').textContent = currentMachineName;
+        document.getElementById('materialsModal').style.display = 'block'; 
+    }
+    
+    async function addMaterial() { 
+        const n = document.getElementById('newMatName').value.trim(); 
+        const f = document.getElementById('newMatFactor').value;
+        
+        if(!n) { showToast('Nome obbligatorio', 'error'); return; }
+        if(!f || parseFloat(f) <= 0) { showToast('Fattore deve essere > 0', 'error'); return; }
+        
+        const result = await apiCall(`/api/machines/${currentMachineId}/materials`, {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, factor:f})
+        });
+        if (result) { 
+            showToast('Materiale aggiunto'); 
+            document.getElementById('newMatName').value = '';
+            document.getElementById('newMatFactor').value = '';
+            loadMachineData(true); 
+        }
+    }
+    
+    async function delMat(id) { 
+        if(confirm('Eliminare questo materiale?')) { 
+            const result = await apiCall(`/api/materials/${id}`, {method:'DELETE'});
+            if (result) { showToast('Materiale eliminato'); loadMachineData(true); }
+        } 
+    }
+    
+    function editMaterial(id, name, factor) {
+        document.getElementById('editMatId').value = id;
+        document.getElementById('editMatName').value = name;
+        document.getElementById('editMatFactor').value = factor;
+        document.getElementById('editMaterialModal').style.display = 'block';
+    }
+    
+    async function updateMaterial() {
+        const id = document.getElementById('editMatId').value;
+        const name = document.getElementById('editMatName').value.trim();
+        const factor = document.getElementById('editMatFactor').value;
+        
+        if (!name) { showToast('Nome obbligatorio', 'error'); return; }
+        if (!factor || parseFloat(factor) <= 0) { showToast('Fattore deve essere > 0', 'error'); return; }
+        
+        const result = await apiCall(`/api/materials/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, factor: parseFloat(factor) })
+        });
+        
+        if (result) {
+            showToast('Materiale aggiornato');
+            closeModal('editMaterialModal');
+            loadMachineData(true);
+        }
+    }
+    
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) event.target.style.display = 'none';
+    });
+
+    // === INIT ===
+    console.log('TLM Manager V6 - Inizializzazione...');
+    loadMachines().then(() => {
+        console.log('Macchine caricate:', machinesData.length);
+    });
+    
+    // Auto-refresh solo se siamo nella pagina tools
+    setInterval(() => {
+        if (currentMachineId) {
+            loadMachineData();
+        } else {
+            loadMachines();
+        }
+    }, 5000);
+</script>
+</body>
+</html>

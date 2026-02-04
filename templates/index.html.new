@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLM Manager</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .hover-lift {
+            transition: all 0.2s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app">
+        {% raw %}
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-900">TLM Manager</h1>
+                            <p class="text-xs text-gray-500">Industrial Tool Management</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <button v-if="selectedMachine" @click="goToHome" class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                            </svg>
+                            <span>Indietro</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- HOME VIEW -->
+            <div v-if="!selectedMachine" class="fade-in">
+                <!-- Global Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl p-6 border border-gray-200 hover-lift">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Machines</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ machines.length }}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-6 border border-gray-200 hover-lift">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Tools</p>
+                                <p class="text-3xl font-bold text-gray-900 mt-1">{{ globalStats.totalTools }}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-6 border border-gray-200 hover-lift">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Critical/Overtime</p>
+                                <p class="text-3xl font-bold mt-1" :class="globalStats.critical > 0 ? 'text-red-600' : 'text-gray-900'">
+                                    {{ globalStats.critical }}
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" :class="globalStats.critical > 0 ? 'bg-red-100' : 'bg-gray-100'">
+                                <svg class="w-6 h-6" :class="globalStats.critical > 0 ? 'text-red-600' : 'text-gray-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-6 border border-gray-200 hover-lift">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">OK Tools</p>
+                                <p class="text-3xl font-bold text-emerald-600 mt-1">{{ globalStats.ok }}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Machines Cards -->
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Macchine</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="machine in machines" :key="machine.id" 
+                         @click="selectMachine(machine.id)"
+                         class="bg-white rounded-xl p-6 border-2 border-gray-200 hover:border-blue-500 cursor-pointer transition hover-lift">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ machine.name }}</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Utensili</span>
+                                <span class="font-mono font-semibold text-gray-900">{{ machine.stats.total_tools }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">OK</span>
+                                <span class="font-mono font-semibold text-emerald-600">{{ machine.stats.ok }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm" v-if="machine.stats.critical > 0">
+                                <span class="text-gray-600">Critici</span>
+                                <span class="font-mono font-semibold text-red-600">{{ machine.stats.critical }}</span>
+                            </div>
+                        </div>
+                        <p v-if="machine.description" class="text-xs text-gray-500 mt-3 italic">{{ machine.description }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MACHINE VIEW -->
+            <div v-if="selectedMachine" class="fade-in">
+                <!-- Machine Header -->
+                <div class="bg-white rounded-xl p-6 mb-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-900">{{ getMachineName(selectedMachine) }}</h2>
+                        <div class="flex items-center space-x-2">
+                            <button @click="currentView = 'tools'" 
+                                    class="px-4 py-2 rounded-lg transition font-medium text-sm"
+                                    :class="currentView === 'tools' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'">
+                                Utensili
+                            </button>
+                            <button @click="currentView = 'dashboard'" 
+                                    class="px-4 py-2 rounded-lg transition font-medium text-sm"
+                                    :class="currentView === 'dashboard' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'">
+                                Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TOOLS VIEW -->
+                <div v-if="currentView === 'tools'">
+                    <!-- Tools Actions Bar -->
+                    <div class="bg-white rounded-xl p-4 mb-4 border border-gray-200 flex flex-wrap gap-3 items-center justify-between">
+                        <div class="flex flex-wrap gap-2">
+                            <button @click="exportTools" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Export Utensili
+                            </button>
+                            <button @click="exportHistory" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Export Storico
+                            </button>
+                            <button @click="showMaterialsModal = true" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                                </svg>
+                                Materiali
+                            </button>
+                        </div>
+                        <div class="relative flex-grow max-w-md">
+                            <input v-model="searchQuery" type="text" placeholder="Cerca..." 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                            <svg class="absolute right-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Tools Table -->
+                    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th @click="toggleSort('position')" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition">
+                                            <div class="flex items-center space-x-1">
+                                                <span>POS</span>
+                                                <svg v-if="sortBy === 'position'" class="w-4 h-4" :class="sortDesc ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                                </svg>
+                                            </div>
+                                        </th>
+                                        <th @click="toggleSort('alias')" class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition">
+                                            <div class="flex items-center space-x-1">
+                                                <span>ALIAS</span>
+                                                <svg v-if="sortBy === 'alias'" class="w-4 h-4" :class="sortDesc ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                                </svg>
+                                            </div>
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">DUP</th>
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">STATO (WORST CASE)</th>
+                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">AZIONI</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr v-for="tool in filteredTools" :key="tool.id" class="hover:bg-gray-50 transition">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">{{ tool.position || '-' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ tool.alias }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">{{ tool.duplo }}</td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="flex-1 max-w-xs">
+                                                    <div class="progress-bar">
+                                                        <div class="progress-fill" 
+                                                             :style="{width: tool.percent + '%', background: getProgressColor(tool.percent, tool.is_overtime)}">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-sm font-mono whitespace-nowrap flex items-center space-x-2">
+                                                    <span class="font-medium" :class="getTextColor(tool.percent, tool.is_overtime)">
+                                                        Res: {{ Math.round(tool.remaining_norm) }} / Cap: {{ Math.round(tool.total_capacity) }}
+                                                    </span>
+                                                    <span v-if="tool.extensions_norm > 0" class="text-emerald-600">
+                                                        +{{ Math.round(tool.extensions_norm) }}
+                                                    </span>
+                                                    <button @click="openEditLife(tool)" class="text-gray-400 hover:text-blue-600 transition" title="Modifica vita riferimento">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div class="flex space-x-1">
+                                                <button @click="openLavoro(tool)" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition">
+                                                    Lavoro
+                                                </button>
+                                                <button @click="openExt(tool)" class="px-3 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600 transition">
+                                                    +Ext
+                                                </button>
+                                                <button @click="openStats(tool)" class="px-3 py-1 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 transition">
+                                                    Stats
+                                                </button>
+                                                <button @click="openReset(tool)" class="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition">
+                                                    Reset
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DASHBOARD VIEW -->
+                <div v-if="currentView === 'dashboard'">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 text-center">
+                            <p class="text-xs font-medium text-gray-600 mb-2 uppercase">TOTALE</p>
+                            <div class="w-20 h-20 mx-auto mb-2 rounded-full border-4 border-gray-200 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-gray-900">{{ machineStats.total }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 text-center">
+                            <p class="text-xs font-medium text-gray-600 mb-2 uppercase">OK (>50%)</p>
+                            <div class="w-20 h-20 mx-auto mb-2 rounded-full border-4 border-emerald-500 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-emerald-600">{{ machineStats.ok }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 text-center">
+                            <p class="text-xs font-medium text-gray-600 mb-2 uppercase">ATTENZIONE</p>
+                            <div class="w-20 h-20 mx-auto mb-2 rounded-full border-4 border-yellow-500 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-yellow-600">{{ machineStats.warning }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 text-center">
+                            <p class="text-xs font-medium text-gray-600 mb-2 uppercase">CRITICI</p>
+                            <div class="w-20 h-20 mx-auto mb-2 rounded-full border-4 border-red-500 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-red-600">{{ machineStats.critical }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 border border-gray-200 text-center">
+                            <p class="text-xs font-medium text-gray-600 mb-2 uppercase">OVERTIME</p>
+                            <div class="w-20 h-20 mx-auto mb-2 rounded-full border-4 border-purple-500 flex items-center justify-center">
+                                <span class="text-2xl font-bold text-purple-600">{{ machineStats.overtime }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <div class="flex items-center space-x-2 mb-4">
+                                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-900">Utensili Critici (<20%)</h3>
+                            </div>
+                            <div v-if="criticalTools.length === 0" class="text-gray-600 text-sm">
+                                ✅ Nessun utensile critico!
+                            </div>
+                            <ul v-else class="space-y-2">
+                                <li v-for="tool in criticalTools" :key="tool.id" class="flex justify-between items-center text-sm">
+                                    <span class="font-mono">{{ tool.alias }} D{{ tool.duplo }}</span>
+                                    <span class="font-mono font-semibold text-red-600">{{ tool.percent.toFixed(1) }}%</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 border border-gray-200">
+                            <div class="flex items-center space-x-2 mb-4">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <h3 class="text-lg font-semibold text-gray-900">Utensili Overtime</h3>
+                            </div>
+                            <div v-if="overtimeTools.length === 0" class="text-gray-600 text-sm">
+                                ✅ Nessun utensile in overtime!
+                            </div>
+                            <ul v-else class="space-y-2">
+                                <li v-for="tool in overtimeTools" :key="tool.id" class="flex justify-between items-center text-sm">
+                                    <span class="font-mono">{{ tool.alias }} D{{ tool.duplo }}</span>
+                                    <span class="font-mono font-semibold text-purple-600">{{ Math.round(tool.remaining_norm) }} min</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Modal: Edit Tool Life -->
+        <div v-if="showEditLifeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">Modifica Vita Riferimento</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Utensile</label>
+                        <div class="font-mono font-semibold text-lg text-gray-900">{{ editingTool?.alias }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Vita Attuale</label>
+                        <div class="font-mono text-gray-600">{{ editingTool?.target_life_minutes }} minuti</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nuova Vita Riferimento (minuti)</label>
+                        <input v-model.number="newTargetLife" type="number" min="1" step="1"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    </div>
+                    <div v-if="editLifeError" class="text-red-600 text-sm">{{ editLifeError }}</div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="closeEditLife" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">Annulla</button>
+                    <button @click="saveTargetLife" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Salva</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal: Lavoro -->
+        <div v-if="showWorkModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">⏱ Aggiungi Lavoro</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Utensile</label>
+                        <div class="font-mono font-semibold text-lg text-gray-900">{{ selectedTool?.alias }} D{{ selectedTool?.duplo }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Minuti Lavorati</label>
+                        <input v-model.number="workMinutes" type="number" min="1" step="1"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                               placeholder="es: 30">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Materiale Lavorato</label>
+                        <select v-model.number="selectedMaterialId" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option :value="null">Seleziona materiale...</option>
+                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">
+                                {{ mat.name }} (fattore: {{ mat.factor }})
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showWorkModal = false" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">Annulla</button>
+                    <button @click="submitWork" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Conferma</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal: Ext+ -->
+        <div v-if="showExtModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">⚡ Estendi Vita</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Utensile</label>
+                        <div class="font-mono font-semibold text-lg text-gray-900">{{ selectedTool?.alias }} D{{ selectedTool?.duplo }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Minuti Estensione</label>
+                        <input v-model.number="extMinutes" type="number" min="1" step="1"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none font-mono"
+                               placeholder="es: 30">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Materiale di Riferimento</label>
+                        <select v-model.number="selectedMaterialId" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:outline-none">
+                            <option :value="null">Seleziona materiale...</option>
+                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">
+                                {{ mat.name }} (fattore: {{ mat.factor }})
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showExtModal = false" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">Annulla</button>
+                    <button @click="submitExt" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition">Conferma</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal: Stats -->
+        <div v-if="showStatsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-lg w-full">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">📊 Statistiche Utensile</h3>
+                <div v-if="toolStats" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Utensile</label>
+                        <div class="font-mono font-semibold text-lg text-gray-900">{{ selectedTool?.alias }} D{{ selectedTool?.duplo }}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-600 mb-1">Uso Normalizzato</div>
+                            <div class="font-mono text-xl font-bold text-gray-900">{{ Math.round(toolStats.used_norm) }} min</div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-600 mb-1">Uso Reale</div>
+                            <div class="font-mono text-xl font-bold text-gray-900">{{ Math.round(toolStats.used_real) }} min</div>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <div class="text-xs text-blue-600 mb-1">Capacità Totale</div>
+                            <div class="font-mono text-xl font-bold text-blue-900">{{ Math.round(toolStats.total_capacity) }} min</div>
+                        </div>
+                        <div class="bg-emerald-50 rounded-lg p-4">
+                            <div class="text-xs text-emerald-600 mb-1">Residuo</div>
+                            <div class="font-mono text-xl font-bold text-emerald-900">{{ Math.round(toolStats.remaining_norm) }} min</div>
+                        </div>
+                    </div>
+                    <div v-if="toolStats.extensions_norm > 0" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <div class="text-sm text-yellow-800">
+                            <span class="font-semibold">Estensioni:</span> +{{ Math.round(toolStats.extensions_norm) }} minuti
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="text-sm text-gray-700">
+                            <div class="flex justify-between mb-2">
+                                <span>Percentuale Rimanente:</span>
+                                <span class="font-mono font-bold" :class="getTextColor(toolStats.percent, toolStats.is_overtime)">
+                                    {{ toolStats.percent.toFixed(1) }}%
+                                </span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" 
+                                     :style="{width: toolStats.percent + '%', background: getProgressColor(toolStats.percent, toolStats.is_overtime)}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-center text-gray-500 py-8">Caricamento...</div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showStatsModal = false" class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition">Chiudi</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal: Reset -->
+        <div v-if="showResetModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">🔄 Reset Utensile</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Utensile</label>
+                        <div class="font-mono font-semibold text-lg text-gray-900">{{ selectedTool?.alias }} D{{ selectedTool?.duplo }}</div>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <div class="text-sm text-yellow-800">
+                                Questa operazione azzererà lo storico dell'utensile e resetterà il conteggio della vita.
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Motivo Reset</label>
+                        <select v-model="resetStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            <option value="OK">✅ Affilatura riuscita (OK)</option>
+                            <option value="BROKEN">💥 Rottura (BROKEN)</option>
+                            <option value="EARLY">⚠️ Affilatura anticipata (EARLY)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showResetModal = false" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">Annulla</button>
+                    <button @click="submitReset" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Conferma Reset</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal: Materiali -->
+        <div v-if="showMaterialsModal" @click.self="showMaterialsModal = false" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">🎨 Gestione Materiali</h3>
+                
+                <!-- Add New Material -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h4 class="text-sm font-semibold text-blue-900 mb-3">Aggiungi Nuovo Materiale</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="md:col-span-2">
+                            <input v-model="newMaterial.name" type="text" placeholder="Nome materiale (es: INOX 316)"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                        </div>
+                        <div class="flex space-x-2">
+                            <input v-model.number="newMaterial.factor" type="number" step="0.1" min="0.1" placeholder="Fattore"
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                            <button @click="addMaterial" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                Aggiungi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Materials List -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2">Materiali Configurati</h4>
+                    <div v-if="materials.length === 0" class="text-center text-gray-500 py-8">
+                        Nessun materiale configurato
+                    </div>
+                    <div v-else class="space-y-2">
+                        <div v-for="material in materials" :key="material.id" 
+                             class="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:bg-gray-100 transition">
+                            <div v-if="editingMaterial?.id === material.id" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="md:col-span-2">
+                                    <input v-model="editingMaterial.name" type="text"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                                </div>
+                                <div class="flex space-x-2">
+                                    <input v-model.number="editingMaterial.factor" type="number" step="0.1" min="0.1"
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                                    <button @click="saveEditMaterial" class="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition">
+                                        ✓
+                                    </button>
+                                    <button @click="cancelEditMaterial" class="px-3 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500 transition">
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">{{ material.name }}</div>
+                                    <div class="text-xs text-gray-500">Fattore: {{ material.factor }}</div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button @click="startEditMaterial(material)" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition">
+                                        Modifica
+                                    </button>
+                                    <button @click="deleteMaterial(material.id)" class="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition">
+                                        Elimina
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6">
+                    <button @click="showMaterialsModal = false" class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition">
+                        Chiudi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endraw %}
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    machines: [],
+                    selectedMachine: null,
+                    tools: [],
+                    currentView: 'tools',
+                    searchQuery: '',
+                    sortBy: 'position',
+                    sortDesc: false,
+                    showEditLifeModal: false,
+                    editingTool: null,
+                    newTargetLife: 0,
+                    editLifeError: '',
+                    showWorkModal: false,
+                    showExtModal: false,
+                    showStatsModal: false,
+                    showResetModal: false,
+                    showMaterialsModal: false,
+                    selectedTool: null,
+                    workMinutes: '',
+                    extMinutes: '',
+                    selectedMaterialId: null,
+                    materials: [],
+                    editingMaterial: null,
+                    newMaterial: { name: '', factor: 1.0 },
+                    resetStatus: 'OK',
+                    toolStats: null,
+                    globalStats: {
+                        totalTools: 0,
+                        critical: 0,
+                        ok: 0
+                    },
+                    machineStats: {
+                        total: 0,
+                        ok: 0,
+                        warning: 0,
+                        critical: 0,
+                        overtime: 0
+                    }
+                };
+            },
+            
+            computed: {
+                filteredTools() {
+                    let result = this.tools;
+                    
+                    // Filtra per ricerca
+                    if (this.searchQuery) {
+                        const q = this.searchQuery.toLowerCase();
+                        result = result.filter(t => 
+                            t.alias.toLowerCase().includes(q) ||
+                            (t.position && t.position.toString().includes(q))
+                        );
+                    }
+                    
+                    // Ordina
+                    result = [...result].sort((a, b) => {
+                        let valA = a[this.sortBy];
+                        let valB = b[this.sortBy];
+                        
+                        // Gestisci null/undefined per position
+                        if (this.sortBy === 'position') {
+                            valA = valA || 99999;
+                            valB = valB || 99999;
+                        }
+                        
+                        // Confronto numerico o stringa
+                        if (typeof valA === 'number' && typeof valB === 'number') {
+                            return this.sortDesc ? valB - valA : valA - valB;
+                        } else {
+                            const comparison = String(valA).localeCompare(String(valB));
+                            return this.sortDesc ? -comparison : comparison;
+                        }
+                    });
+                    
+                    return result;
+                },
+                
+                criticalTools() {
+                    return this.tools.filter(t => t.percent < 20 && !t.is_overtime).slice(0, 10);
+                },
+                
+                overtimeTools() {
+                    return this.tools.filter(t => t.is_overtime).slice(0, 10);
+                }
+            },
+            
+            methods: {
+                async loadMachines() {
+                    try {
+                        const res = await fetch('/api/machines');
+                        const data = await res.json();
+                        this.machines = data;
+                        this.calculateGlobalStats();
+                    } catch (e) {
+                        console.error('Error loading machines:', e);
+                    }
+                },
+                
+                async selectMachine(id) {
+                    this.selectedMachine = id;
+                    this.currentView = 'tools';
+                    await this.loadTools();
+                },
+                
+                async loadTools() {
+                    try {
+                        const res = await fetch(`/api/machines/${this.selectedMachine}/tools`);
+                        const data = await res.json();
+                        
+                        // Flatten status_data per facilità di accesso
+                        this.tools = data.map(tool => ({
+                            ...tool,
+                            percent: tool.status_data?.percent || 0,
+                            remaining_norm: tool.status_data?.remaining_norm || 0,
+                            total_capacity: tool.status_data?.total_capacity || 0,
+                            extensions_norm: tool.status_data?.extensions_norm || 0,
+                            is_overtime: tool.status_data?.is_overtime || false
+                        }));
+                        
+                        this.calculateMachineStats();
+                    } catch (e) {
+                        console.error('Error loading tools:', e);
+                    }
+                },
+                
+                goToHome() {
+                    this.selectedMachine = null;
+                    this.tools = [];
+                    this.searchQuery = '';
+                    this.loadMachines();
+                },
+                
+                getMachineName(id) {
+                    const m = this.machines.find(m => m.id === id);
+                    return m ? m.name : '';
+                },
+                
+                getProgressColor(percent, isOvertime) {
+                    if (isOvertime) return 'linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)';
+                    if (percent < 20) return 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+                    if (percent < 50) return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    return 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                },
+                
+                getTextColor(percent, isOvertime) {
+                    if (isOvertime) return 'text-purple-600';
+                    if (percent < 20) return 'text-red-600';
+                    if (percent < 50) return 'text-yellow-600';
+                    return 'text-emerald-600';
+                },
+                
+                calculateGlobalStats() {
+                    let total = 0;
+                    let critical = 0;
+                    let ok = 0;
+                    
+                    this.machines.forEach(m => {
+                        if (m.stats) {
+                            total += m.stats.total_tools || 0;
+                            critical += (m.stats.critical || 0) + (m.stats.overtime || 0);
+                            ok += m.stats.ok || 0;
+                        }
+                    });
+                    
+                    this.globalStats = { totalTools: total, critical, ok };
+                },
+                
+                calculateMachineStats() {
+                    const stats = {
+                        total: this.tools.length,
+                        ok: 0,
+                        warning: 0,
+                        critical: 0,
+                        overtime: 0
+                    };
+                    
+                    this.tools.forEach(t => {
+                        if (t.is_overtime) stats.overtime++;
+                        else if (t.percent >= 50) stats.ok++;
+                        else if (t.percent >= 20) stats.warning++;
+                        else stats.critical++;
+                    });
+                    
+                    this.machineStats = stats;
+                },
+                
+                exportTools() {
+                    window.location.href = `/api/machines/${this.selectedMachine}/export/tools`;
+                },
+                
+                exportHistory() {
+                    window.location.href = `/api/machines/${this.selectedMachine}/export/history`;
+                },
+                
+                openLavoro(tool) {
+                    this.selectedTool = tool;
+                    this.workMinutes = '';
+                    this.selectedMaterialId = null;
+                    this.showWorkModal = true;
+                    this.loadMaterials();
+                },
+                
+                openExt(tool) {
+                    this.selectedTool = tool;
+                    this.extMinutes = '';
+                    this.selectedMaterialId = null;
+                    this.showExtModal = true;
+                    this.loadMaterials();
+                },
+                
+                openStats(tool) {
+                    this.selectedTool = tool;
+                    this.showStatsModal = true;
+                    this.loadToolStats(tool.id);
+                },
+                
+                openReset(tool) {
+                    this.selectedTool = tool;
+                    this.resetStatus = 'OK';
+                    this.showResetModal = true;
+                },
+                
+                toggleSort(field) {
+                    if (this.sortBy === field) {
+                        this.sortDesc = !this.sortDesc;
+                    } else {
+                        this.sortBy = field;
+                        this.sortDesc = false;
+                    }
+                },
+                
+                openEditLife(tool) {
+                    this.editingTool = tool;
+                    this.newTargetLife = tool.target_life_minutes;
+                    this.editLifeError = '';
+                    this.showEditLifeModal = true;
+                },
+                
+                closeEditLife() {
+                    this.showEditLifeModal = false;
+                    this.editingTool = null;
+                    this.newTargetLife = 0;
+                    this.editLifeError = '';
+                },
+                
+                async saveTargetLife() {
+                    if (!this.newTargetLife || this.newTargetLife <= 0) {
+                        this.editLifeError = 'Inserisci un valore positivo';
+                        return;
+                    }
+                    
+                    try {
+                        const res = await fetch(`/api/tools/${this.editingTool.id}/update_target`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                target: this.newTargetLife
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            // Ricarica utensili
+                            await this.loadTools();
+                            this.closeEditLife();
+                        } else {
+                            const data = await res.json();
+                            this.editLifeError = data.error || 'Errore durante il salvataggio';
+                        }
+                    } catch (e) {
+                        this.editLifeError = 'Errore di connessione';
+                        console.error('Error saving target life:', e);
+                    }
+                },
+                
+                async loadMaterials() {
+                    try {
+                        const res = await fetch(`/api/materials?machine_id=${this.selectedMachine}`);
+                        this.materials = await res.json();
+                    } catch (e) {
+                        console.error('Error loading materials:', e);
+                    }
+                },
+                
+                async addMaterial() {
+                    if (!this.newMaterial.name || !this.newMaterial.factor) {
+                        alert('Inserisci nome e fattore');
+                        return;
+                    }
+                    
+                    try {
+                        const res = await fetch('/api/materials', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                machine_id: this.selectedMachine,
+                                name: this.newMaterial.name,
+                                factor: parseFloat(this.newMaterial.factor)
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadMaterials();
+                            this.newMaterial = { name: '', factor: 1.0 };
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante il salvataggio');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error adding material:', e);
+                    }
+                },
+                
+                async deleteMaterial(materialId) {
+                    if (!confirm('Confermi eliminazione materiale?')) return;
+                    
+                    try {
+                        const res = await fetch(`/api/materials/${materialId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadMaterials();
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante eliminazione');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error deleting material:', e);
+                    }
+                },
+                
+                startEditMaterial(material) {
+                    this.editingMaterial = {...material};
+                },
+                
+                cancelEditMaterial() {
+                    this.editingMaterial = null;
+                },
+                
+                async saveEditMaterial() {
+                    if (!this.editingMaterial.name || !this.editingMaterial.factor) {
+                        alert('Inserisci nome e fattore validi');
+                        return;
+                    }
+                    
+                    try {
+                        const res = await fetch(`/api/materials/${this.editingMaterial.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: this.editingMaterial.name,
+                                factor: parseFloat(this.editingMaterial.factor)
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadMaterials();
+                            this.editingMaterial = null;
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante il salvataggio');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error updating material:', e);
+                    }
+                },
+                
+                async submitWork() {
+                    if (!this.workMinutes || this.workMinutes <= 0) {
+                        alert('Inserisci minuti validi');
+                        return;
+                    }
+                    if (!this.selectedMaterialId) {
+                        alert('Seleziona un materiale');
+                        return;
+                    }
+                    
+                    const material = this.materials.find(m => m.id === this.selectedMaterialId);
+                    
+                    try {
+                        const res = await fetch(`/api/tools/${this.selectedTool.id}/session`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                minutes: parseFloat(this.workMinutes),
+                                factor: material.factor,
+                                mat_name: material.name
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadTools();
+                            this.showWorkModal = false;
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante il salvataggio');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error submitting work:', e);
+                    }
+                },
+                
+                async submitExt() {
+                    if (!this.extMinutes || this.extMinutes <= 0) {
+                        alert('Inserisci minuti validi');
+                        return;
+                    }
+                    if (!this.selectedMaterialId) {
+                        alert('Seleziona un materiale');
+                        return;
+                    }
+                    
+                    const material = this.materials.find(m => m.id === this.selectedMaterialId);
+                    
+                    try {
+                        const res = await fetch(`/api/tools/${this.selectedTool.id}/extend`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                minutes: parseFloat(this.extMinutes),
+                                factor: material.factor,
+                                mat_name: material.name
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadTools();
+                            this.showExtModal = false;
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante il salvataggio');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error submitting ext:', e);
+                    }
+                },
+                
+                async loadToolStats(toolId) {
+                    try {
+                        const res = await fetch(`/api/tools/${toolId}/prediction`);
+                        this.toolStats = await res.json();
+                    } catch (e) {
+                        console.error('Error loading stats:', e);
+                    }
+                },
+                
+                async submitReset() {
+                    try {
+                        const res = await fetch(`/api/tools/${this.selectedTool.id}/reset`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                status: this.resetStatus
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            await this.loadTools();
+                            this.showResetModal = false;
+                        } else {
+                            const data = await res.json();
+                            alert(data.error || 'Errore durante il reset');
+                        }
+                    } catch (e) {
+                        alert('Errore di connessione');
+                        console.error('Error submitting reset:', e);
+                    }
+                }
+            },
+            
+            mounted() {
+                this.loadMachines();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
